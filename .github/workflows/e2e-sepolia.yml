@@ -1,0 +1,102 @@
+name: E2E Sepolia (live)
+
+# The opt-in live suite (sepolia.live.e2e.test.ts) runs against REAL Sepolia with real
+# funds. It is deliberately NOT on pull_request: it needs secrets (a funded seed, funder
+# key, paymaster) that must not be exposed to fork PRs, and it mutates on-chain state. So
+# it runs on push-to-main, on a nightly cron, and on manual dispatch only.
+#
+# The DEFAULT-ON public tier (sepolia.public.e2e.test.ts) needs no secrets and already
+# runs in node.yml via `npm test` on every push/PR — it is not repeated here.
+#
+# REPO-OWNER SETUP (one-time, in the GitHub UI), required before this workflow can reach
+# the funds. The `live` job below declares `environment: sepolia-e2e`, so its secrets are
+# resolved from that protected Environment, NOT from repo-level secrets.
+#
+# ORDERING: the environment AND its `main`-only deployment-branch protection rule MUST be
+# created before (or at the same time as) this workflow merges. GitHub auto-creates an
+# environment that is referenced but not yet configured, and that auto-created environment
+# has NO branch policy and NO reviewers, i.e. it provides ZERO protection until you
+# configure it. The YAML alone gates nothing; the protection lives entirely in the
+# environment's configuration.
+#
+# In Settings > Environments:
+#   1. Create an Environment named exactly `sepolia-e2e`.
+#   2. Add a deployment branch protection rule limiting it to `main` (Deployment branches
+#      and tags > Selected branches and tags > add rule `main`). This is the control that
+#      stops a forked/arbitrary ref, or a workflow_dispatch from a non-main branch, from
+#      ever resolving the funder secret. RECOMMENDED: also enable Required reviewers so a
+#      human must approve each live run before the secrets are released. For a public repo
+#      the branch policy is otherwise the sole automated gate before the funder private key
+#      is released, so a reviewer gate is a valuable second control.
+#   3. Under that SAME environment (Settings > Environments > sepolia-e2e > Environment
+#      secrets, NOT repo-level Settings > Secrets and variables), create the six secrets:
+#        EWC_E2E_RPC_URL, EWC_E2E_SOLANA_SEED, EWC_E2E_FUNDER_ADDRESS,
+#        EWC_E2E_FUNDER_PRIVATE_KEY, EWC_E2E_PAYMASTER_URL, EWC_E2E_PAYMASTER_API_KEY.
+#   4. DELETE any pre-existing repo-level copies of those six EWC_E2E_* secrets (Settings >
+#      Secrets and variables > Actions) once they exist under the environment. `${{
+#      secrets.X }}` falls back to repo/org scope, so leaving repo-level copies means a
+#      non-main run could still resolve the funder key even with the environment locked
+#      down. The `sepolia-e2e` environment must be the SOLE source of these secrets.
+#
+# WHY an environment instead of repo secrets: this repo is going public. Repo-level
+# secrets resolve for any workflow run regardless of ref, so a workflow_dispatch on an
+# arbitrary branch (or a compromised push path) could read the funder private key. Binding
+# the secrets to a `main`-only protected environment gates the funder key so it is only
+# reachable from a run on `main` (and, if required reviewers are set, human-approved).
+# Nothing running from another ref or dispatch can resolve it.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Nightly at 03:17 UTC (off the hour to avoid the cron stampede).
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize live runs: they touch shared on-chain account state, so never run two at
+# once. Do NOT cancel an in-progress run — it may be mid-transaction on-chain.
+concurrency:
+  group: e2e-sepolia-live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: sepolia live e2e
+    runs-on: ubuntu-latest
+    # Bind to the protected `sepolia-e2e` environment so the EWC_E2E_* secrets below
+    # resolve from that environment (main-only, optionally reviewer-gated), not from
+    # repo-level secrets. See the header comment for the required GitHub setup.
+    environment: sepolia-e2e
+    timeout-minutes: 20
+    env:
+      EWC_E2E_SEPOLIA: "1"
+      EWC_E2E_UPGRADE: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - run: npm ci
+      # Secrets are scoped to THIS step only — never to job-level env — so npm ci's
+      # dependency lifecycle scripts never see the funder key, seed, or paymaster API key.
+      # Without the required secrets the live suite would throw (EWC_E2E_SEPOLIA=1 must
+      # never silently no-op). On a fork or a repo without secrets configured, warn and
+      # exit 0 so the workflow is not a spurious red X; otherwise run the live suite.
+      - name: Run live suite (skip cleanly if secrets are unset)
+        env:
+          EWC_E2E_RPC_URL: ${{ secrets.EWC_E2E_RPC_URL }}
+          EWC_E2E_SOLANA_SEED: ${{ secrets.EWC_E2E_SOLANA_SEED }}
+          EWC_E2E_FUNDER_ADDRESS: ${{ secrets.EWC_E2E_FUNDER_ADDRESS }}
+          EWC_E2E_FUNDER_PRIVATE_KEY: ${{ secrets.EWC_E2E_FUNDER_PRIVATE_KEY }}
+          EWC_E2E_PAYMASTER_URL: ${{ secrets.EWC_E2E_PAYMASTER_URL }}
+          EWC_E2E_PAYMASTER_API_KEY: ${{ secrets.EWC_E2E_PAYMASTER_API_KEY }}
+        run: |
+          if [ -z "$EWC_E2E_RPC_URL" ] || [ -z "$EWC_E2E_SOLANA_SEED" ]; then
+            echo "::warning::EWC_E2E_RPC_URL / EWC_E2E_SOLANA_SEED not set — skipping live Sepolia e2e."
+            exit 0
+          fi
+          npm run test:e2e:sepolia -w @starkware-libs/anystark-react

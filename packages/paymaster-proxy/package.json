@@ -1,0 +1,60 @@
+{
+  "name": "@starkware-libs/anystark-paymaster-proxy",
+  "version": "0.1.7",
+  "description": "Thin, stateless SNIP-29 paymaster sponsorship proxy: holds the upstream API key server-side and enforces a sponsorship policy. Provider-agnostic, works with any SNIP-29 upstream.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starkware-libs/anystark.git",
+    "directory": "packages/paymaster-proxy"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./adapters/node/handler.ts"
+  },
+  "files": [
+    "dist",
+    "src",
+    "adapters",
+    "scripts/generate_policy.mjs",
+    ".env.example"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public",
+    "main": "./dist/src/index.js",
+    "types": "./dist/src/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/src/index.d.ts",
+        "default": "./dist/src/index.js"
+      },
+      "./node": {
+        "types": "./dist/adapters/node/handler.d.ts",
+        "default": "./dist/adapters/node/handler.js"
+      }
+    }
+  },
+  "bin": {
+    "anystark-paymaster-policy": "./scripts/generate_policy.mjs"
+  },
+  "//build": "Uses plain tsc rather than the sibling packages' tsup: this package ships a deployable proxy (serverless functions / a worker) alongside a library surface, so tsc compiles both roots (src + adapters) into dist/src and dist/adapters, and publishConfig points the published entry points there.",
+  "//starknet": "Runtime dependency of the policy-generator bin (scripts/generate_policy.mjs), which computes sn_keccak selectors with hash.getSelectorFromName and canonicalizes felts with num.toHex64.",
+  "scripts": {
+    "build": "tsc",
+    "policy": "node scripts/generate_policy.mjs",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@starkware-libs/anystark-core": "^0.1.7",
+    "starknet": "^8.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43"
+  }
+}

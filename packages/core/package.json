@@ -1,0 +1,81 @@
+{
+  "name": "@starkware-libs/anystark-core",
+  "version": "0.1.7",
+  "description": "Framework-agnostic core for connecting a Phantom (Solana) wallet as a Starknet account: address derivation, Ed25519 signer, Phantom provider, and a counterfactual sol_account with sponsored (SNIP-29) execution.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starkware-libs/anystark.git",
+    "directory": "packages/core"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cctp-addresses": "./src/cctp_addresses.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./cctp-addresses": {
+        "types": "./dist/cctp_addresses.d.ts",
+        "default": "./dist/cctp_addresses.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "size": "size-limit",
+    "check:lazy": "node scripts/assert_lazy.mjs core"
+  },
+  "size-limit": [
+    {
+      "name": "@starkware-libs/anystark-core import cost (boot path; garaga excluded, kept lazy by check:lazy). Includes @noble/curves ed25519, imported eagerly to validate a pubkey (on-curve, not small-order) before deriving its address. [measured 13.67 kB, limit rounded up for headroom]",
+      "path": "dist/index.js",
+      "ignore": [
+        "garaga"
+      ],
+      "limit": "14 kB"
+    },
+    {
+      "name": "@starkware-libs/anystark-core tree-shaking smoke: single symbol deriveSolAccountAddress, garaga excluded (guards against tree-shaking breaking). Carries the eager @noble/curves ed25519 key validation. [measured 9.73 kB, limit catches a >~13% regression]",
+      "path": "dist/index.js",
+      "import": "{ deriveSolAccountAddress }",
+      "ignore": [
+        "garaga"
+      ],
+      "limit": "11 kB"
+    },
+    {
+      "name": "garaga lazy chunk size (INFORMATIONAL, non-gating: no limit set): first-signature-only WASM (base64-inlined), NOT the boot path; measures the shipped garaga module a consumer's bundler code-splits. Path assumes garaga is workspace-hoisted to root node_modules (../../node_modules/garaga). [measured 607.32 kB, ~2.6 MB raw]",
+      "path": "../../node_modules/garaga/dist/index.mjs",
+      "disablePlugins": [
+        "@size-limit/esbuild"
+      ]
+    }
+  ],
+  "dependencies": {
+    "@noble/curves": "~1.7.0",
+    "garaga": "~1.1.0"
+  },
+  "peerDependencies": {
+    "starknet": ">=8.5.2 <11"
+  },
+  "devDependencies": {
+    "starknet": "8.9.2"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    // rootDir is the package root (not "./src") on purpose: this package ships a
+    // deployable proxy alongside a library surface and compiles two roots
+    // (src + adapters), so output is nested under dist/ (dist/src/, dist/adapters/)
+    // rather than flat. In the workspace, main/types/exports resolve the TS source
+    // under src/; the published package resolves the hoisted publishConfig entry
+    // points under dist/src and dist/adapters (see package.json).
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["src", "adapters"]
+}

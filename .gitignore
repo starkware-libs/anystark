@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Cairo / Scarb
+target/
+.snfoundry_cache/
+
+# Test / coverage
+coverage/
+
+# Generated SNIP-9 test vector (gen_snip9_vector.mjs default output; the committed
+# fixture lives in packages/contracts/src/test_outside_execution.cairo)
+packages/core/scripts/vector.json
+
+# Env: never commit local env files (they hold RPC URLs, funder keys, secrets);
+# keep the committed .env.example templates tracked as the documented reference.
+.env*
+!.env.example
+!**/.env.example
+
+# CCTP mainnet verification harness state: holds a throwaway Ed25519 seed in
+# plaintext (chmod 600) plus in-flight burn identifiers. Never commit it.
+packages/cctp/scripts/.verify-mainnet-state.json
+
+# Secrets: never commit private keys, certificates, or keystores
+# (e.g. local funder wallet keys / TLS material).
+*.pem
+*.p12
+*keystore*
+*key*.json
+
+# Editor / OS
+.DS_Store
+*.log

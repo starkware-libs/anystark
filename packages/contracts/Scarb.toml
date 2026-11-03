@@ -1,0 +1,54 @@
+# NOTE: the compiled Sierra — and therefore the class hash the derived account
+# address depends on — embeds the crate path (`sol_account::SolAccount`). Renaming
+# the package or moving the contract out of the crate root changes the class hash,
+# which would derive a different (uncontrollable) set of addresses. If you rename,
+# you MUST re-declare on every network and update the class-hash registry in
+# @starkware-libs/anystark-core and the derivation test vector. See README.
+[package]
+name = "sol_account"
+version = "0.1.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = "2.18.0"
+# Pinned EXACTLY: garaga's EdDSA logic is inlined into the compiled Sierra, so the
+# resolved garaga version is part of the fund-critical class hash. `=1.1.0` matches
+# the committed Scarb.lock and prevents `scarb update` from silently re-resolving to a
+# different patch (which would derive a different, uncontrollable account address).
+# This release carries the CryptoExperts audit follow-up: is_valid_eddsa_signature
+# rejects RFC 8032 small-order points ([8]P != O for both R and the public key) and
+# takes Py_twisted as a function parameter, so the account passes its stored signer
+# to the verifier directly.
+garaga = "=1.1.0"
+# SRC9 component: SNIP-9 outside execution (execute_from_outside_v2). Pinned
+# EXACTLY for the same class-hash reason as garaga: SRC9Component code is inlined
+# into the compiled Sierra, so its resolved version co-determines the fund-critical
+# class hash.
+openzeppelin_account = "=3.0.0"
+# SRC5 introspection component: lets wallets / tooling query supports_interface.
+# Pinned EXACTLY for the same class-hash reason as garaga: SRC5Component code is
+# inlined into the compiled Sierra, so its resolved version co-determines the
+# fund-critical class hash.
+openzeppelin_introspection = "=3.0.0"
+# Interface ids (ISRC5_ID / ISRC6_ID / ISRC9_V2_ID) and interface types
+# (dispatchers, OutsideExecution) live here — ids imported instead of hardcoding
+# the hex values. Pinned EXACTLY so `scarb update` cannot re-resolve past the
+# committed Scarb.lock.
+openzeppelin_interfaces = "=2.1.0"
+
+[dev-dependencies]
+snforge_std = "0.60.0"
+assert_macros = "2.18.0"
+# Test-only: OffchainMessageHash / SNIP12Metadata let the re-derivation-aid test
+# recompute OZ's Cairo SNIP-12 hash for the locked vector. Not compiled into the
+# production class (dev-dependency), so it does not affect the class hash.
+openzeppelin_utils = "=2.1.0"
+
+[[target.starknet-contract]]
+sierra = true
+
+[scripts]
+test = "snforge test"
+
+[tool.scarb]
+allow-prebuilt-plugins = ["snforge_std"]

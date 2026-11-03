@@ -1,0 +1,38 @@
+{
+  "name": "anystark",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SDK that lets any Starknet dapp connect external (non-Starknet) wallets — starting with Phantom (Solana).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e:sepolia": "npm run test:e2e:sepolia -w @starkware-libs/anystark-react",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "size": "npm run size --workspaces --if-present",
+    "publish:dry": "node scripts/prepare_publish.mjs --verify"
+  },
+  "devDependencies": {
+    "@cyclonedx/cyclonedx-npm": "6.0.1",
+    "@eslint/js": "9.39.4",
+    "@size-limit/preset-small-lib": "12.1.0",
+    "eslint": "9.39.4",
+    "eslint-config-prettier": "9.1.2",
+    "prettier": "3.8.3",
+    "size-limit": "12.1.0",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.60.1",
+    "vitest": "4.1.9"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+**/target
+package-lock.json
+*.cairo
+Scarb.lock
+# Compiled Sierra artifact fixture (byte-identical copy of scarb build output; must
+# not be reformatted so it stays diff-comparable to target/dev/*.contract_class.json).
+**/__fixtures__/*.contract_class.json

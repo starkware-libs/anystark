@@ -1,0 +1,69 @@
+{
+  "name": "@starkware-libs/anystark-cctp",
+  "version": "0.1.7",
+  "description": "(beta) Bidirectional Solana <-> Starknet USDC bridge over Circle CCTP V2, for funding/defunding a Phantom-derived Starknet account.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starkware-libs/anystark.git",
+    "directory": "packages/cctp"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./addresses": "./src/addresses.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./addresses": {
+        "types": "./dist/addresses.d.ts",
+        "default": "./dist/addresses.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "size": "size-limit",
+    "check:lazy": "node ../core/scripts/assert_lazy.mjs cctp"
+  },
+  "sideEffects": false,
+  "size-limit": [
+    {
+      "name": "@starkware-libs/anystark-cctp import cost (boot path; solana/anchor excluded, loaded lazily at first bridge call) [measured 4.01 kB, limit rounded up for headroom]",
+      "path": "dist/index.js",
+      "ignore": [
+        "@solana/web3.js",
+        "@solana/spl-token",
+        "@coral-xyz/anchor"
+      ],
+      "limit": "4.5 kB"
+    }
+  ],
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.8",
+    "@starkware-libs/anystark-core": "^0.1.7"
+  },
+  "peerDependencies": {
+    "starknet": ">=8.5.2 <11"
+  },
+  "devDependencies": {
+    "starknet": "8.9.2"
+  }
+}

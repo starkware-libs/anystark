@@ -1,0 +1,94 @@
+name: Node
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least-privilege token: the job only checks out, installs, lints, tests, and builds.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: node-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      # Prove the published tarballs stay coherent: hoist each package's publishConfig
+      # entry points and assert every one is present in the packed files, then restore the
+      # manifests. Token-free, so it runs on every PR and catches exports-vs-dist drift
+      # before release day.
+      - run: node scripts/prepare_publish.mjs --verify
+      # Boot-path bundle budgets (garaga/solana excluded, proven lazy below). The
+      # garaga-chunk entry in @starkware-libs/anystark-core is informational (no limit), so a garaga
+      # version bump can never spuriously fail this step.
+      - run: npm run size
+      # Every shipped (budgeted) package must wire both `size` and `check:lazy`,
+      # so no package can silently lose a gate behind `--if-present` fan-out.
+      - run: node packages/core/scripts/assert_gates.mjs
+      # Lock the heavy deps to a lazy dynamic import: fail if any enters the boot
+      # chunk. Invoked explicitly per package (not via `--if-present`) so a lost
+      # script surfaces as a missing gate rather than a silent skip.
+      - run: npm run check:lazy -w @starkware-libs/anystark-core
+      - run: npm run check:lazy -w @starkware-libs/anystark-cctp
+      - run: npm run check:lazy -w @starkware-libs/anystark-react
+
+  # Proves the SDK works against the FLOOR of its peer range, not just the
+  # lockfile version. The floor is 8.5.2 (the peer ranges declare >=8.5.2); if
+  # that floor ever bumps, update this job (three spots), the peer ranges in
+  # packages/{core,cctp,react}/package.json, and the README together.
+  starknet-floor:
+    name: starknet floor (8.5.2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          # This leg needs npm >= 12: older npm resolves each workspace's starknet
+          # peer dependency independently and keeps per-package 8.9.2 copies that the
+          # root override never reaches, which the single-copy assertion below rejects.
+          # node 24 also clears starknet's node >= 22 engine range; the mainline job
+          # keeps covering the .nvmrc version.
+          node-version: "24"
+          cache: "npm"
+      - run: npm install -g npm@^12.0.1
+      - run: npm ci
+      # Force the whole workspace onto the peer-range floor (peer ranges declare
+      # >=8.5.2). Adding the override alone does not re-resolve an already-locked
+      # tree, so `npm update starknet` reifies it to a single 8.5.2 copy. Both
+      # edits (package.json and package-lock.json) exist only on this runner; the
+      # committed lockfile keeps resolving 8.9.2 for every other job.
+      - name: Pin starknet to the peer-range floor
+        run: |
+          npm pkg set overrides.starknet=8.5.2
+          npm update starknet --no-audit --no-fund
+      # Two resolved copies of starknet produce structurally distinct types that
+      # fail at the SDK boundary, so the leg is only meaningful with exactly one
+      # physical copy at exactly 8.5.2. `npm ls` also exits nonzero on any
+      # invalid/unmet edge, which catches a failed override reification.
+      - name: Assert a single resolved starknet@8.5.2
+        run: |
+          npm ls starknet --all
+          copies="$(npm ls starknet --all --parseable | sort -u | wc -l)"
+          test "$copies" -eq 1
+          version="$(node -p "require('./node_modules/starknet/package.json').version")"
+          test "$version" = "8.5.2"
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

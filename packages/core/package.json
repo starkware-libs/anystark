@@ -1,6 +1,6 @@
 {
   "name": "@starkware-libs/anystark-core",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Framework-agnostic core for connecting a Phantom (Solana) wallet as a Starknet account: address derivation, Ed25519 signer, Phantom provider, and a counterfactual sol_account with sponsored (SNIP-29) execution.",
   "license": "MIT",
   "repository": {

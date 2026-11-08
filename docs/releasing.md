@@ -12,10 +12,10 @@ package to this repository.
 ## Lockstep versioning
 
 The four packages share a single version and release under one `vX.Y.Z` git tag.
-`@starkware-libs/anystark-react` and `@starkware-libs/anystark-paymaster-proxy` depend on
-`@starkware-libs/anystark-core` at `^X.Y.Z`; on the `0.x` line a caret admits only that
-minor, so the core pin moves with every minor bump. `scripts/bump_version.mjs` maintains this
-invariant and `scripts/assert_publish_versions.mjs` enforces it in the publish workflow.
+The other three packages depend on `@starkware-libs/anystark-core` at `^X.Y.Z`; on the `0.x`
+line a caret admits only that minor, so the core pin moves with every minor bump.
+`scripts/bump_version.mjs` maintains this invariant and `scripts/assert_publish_versions.mjs`
+enforces it in the publish workflow.
 
 Bump policy while the packages are on `0.x`: a minor bump (`0.N.0`) covers new features and
 breaking changes; a patch bump (`0.N.P`) covers fixes.
@@ -50,7 +50,7 @@ on every pull request, so exports-vs-`dist` drift surfaces before release day.
    ```
 
    This writes `X.Y.Z` into the four publishable manifests, sets the
-   `@starkware-libs/anystark-core` dependency of react and paymaster-proxy to `^X.Y.Z`, and
+   `@starkware-libs/anystark-core` dependency of the other three to `^X.Y.Z`, and
    syncs the lockfile.
 
 2. Open the pull request, let CI pass, and merge it.
@@ -80,7 +80,7 @@ The `publish` job then:
    only a commit that reached main can release.
 2. Installs without dependency install scripts, type-checks, tests, and builds the workspace.
 3. Runs `assert_publish_versions.mjs "$GITHUB_REF_NAME"` so the tag matches every publishable
-   version and react's core pin.
+   version and every core pin.
 4. Runs `prepare_publish.mjs` to hoist the `publishConfig` entry points into each manifest.
 5. Runs `publish_packages.mjs`, which publishes `@starkware-libs/anystark-core`, then
    `@starkware-libs/anystark-cctp`, then `@starkware-libs/anystark-react`, then

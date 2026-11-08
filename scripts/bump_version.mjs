@@ -2,9 +2,9 @@
 // Set a new lockstep version across the publishable AnyStark packages.
 //
 // Writes X.Y.Z into every publishable package (core, cctp, react, paymaster-proxy) and sets
-// the @starkware-libs/anystark-core dependency of each package that declares one (react and
-// paymaster-proxy) to ^X.Y.Z (caret on 0.x admits only that minor, so a minor bump moves the
-// floor with it), then syncs the lockfile with `npm install --package-lock-only`.
+// the @starkware-libs/anystark-core dependency of each package that declares one to ^X.Y.Z
+// (caret on 0.x admits only that minor, so a minor bump moves the floor with it), then syncs
+// the lockfile with `npm install --package-lock-only`.
 //
 // It exists because `npm version --workspaces` is wrong for this repo: it does not update
 // inter-workspace dependency ranges, it runs version lifecycle scripts, and it git-tags by

@@ -2,7 +2,7 @@
 // Publish the AnyStark packages to npm in dependency order.
 //
 // Order: core, then cctp, then react, then paymaster-proxy (the @starkware-libs/anystark-core
-// dependency of react and paymaster-proxy resolves as soon as core is up). Before each
+// dependency of the other three resolves as soon as core is up). Before each
 // publish, `npm view <name>@<version> version`
 // checks the registry; a version already present is skipped, so a first-ever publish and a
 // rerun after a partial failure both do the right thing: a package with no published

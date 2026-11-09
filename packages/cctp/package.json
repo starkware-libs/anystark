@@ -1,6 +1,6 @@
 {
   "name": "@starkware-libs/anystark-cctp",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "(beta) Bidirectional Solana <-> Starknet USDC bridge over Circle CCTP V2, for funding/defunding a Phantom-derived Starknet account.",
   "license": "MIT",
   "repository": {
@@ -58,7 +58,7 @@
     "@coral-xyz/anchor": "^0.30.1",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.95.8",
-    "@starkware-libs/anystark-core": "^0.1.7"
+    "@starkware-libs/anystark-core": "^0.1.8"
   },
   "peerDependencies": {
     "starknet": ">=8.5.2 <11"

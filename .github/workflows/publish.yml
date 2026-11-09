@@ -72,8 +72,7 @@ jobs:
       - run: npm test
       - run: npm run build
       # The tag is the source of truth: every publishable package must sit at the tag's
-      # version, and every package that depends on core (react and paymaster-proxy) must pin
-      # it at ^<version>.
+      # version, and every package that depends on core must pin it at ^<version>.
       - run: node scripts/assert_publish_versions.mjs "$GITHUB_REF_NAME"
       # Hoist each package's publishConfig entry points (main/types/exports) into the
       # manifest; npm honors publishConfig only for config values (registry and similar),

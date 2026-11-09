@@ -84,3 +84,65 @@ jobs:
       # package's first version is published by hand (docs/releasing.md). A version already
       # on the registry is skipped, so a rerun after a partial failure is idempotent.
       - run: node scripts/publish_packages.mjs
+
+  # Keeps the SBOM past the artifact's 90 days: attaches it to the tag's GitHub Release and
+  # signs an SBOM attestation of the tarballs npm serves for this version.
+  release:
+    name: attach the SBOM to the GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    # contents: write creates the Release; id-token: write and attestations: write sign and
+    # store the attestation.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sbom-${{ github.ref_name }}
+      # Downloads the published tarballs, the attestation's subjects. It runs outside the
+      # checkout so the repository's .npmrc min-release-age does not reject the new version,
+      # and retries while the registry starts serving it.
+      - run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            import { PACKAGES } from "./scripts/publishable.mjs";
+            for (const dir of PACKAGES) {
+              const { name, version } = JSON.parse(readFileSync(`${dir}/package.json`, "utf8"));
+              console.log(`${name}@${version}`);
+            }
+          ' > "$RUNNER_TEMP/specs"
+          mkdir "$RUNNER_TEMP/tarballs"
+          cd "$RUNNER_TEMP/tarballs"
+          while read -r spec; do
+            for attempt in 1 2 3 4 5; do
+              if npm pack "$spec"; then break; fi
+              if [ "$attempt" = 5 ]; then exit 1; fi
+              sleep 15
+            done
+          done < "$RUNNER_TEMP/specs"
+      # The action recognizes CycloneDX only by a serialNumber, which the reproducible SBOM
+      # omits, so the predicate type is given explicitly.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/tarballs/*.tgz
+          predicate-type: https://cyclonedx.org/bom
+          predicate-path: anystark-${{ github.ref_name }}.cdx.json
+      # Creates the tag's Release with the SBOM, or replaces the SBOM on a rerun.
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          SBOM: anystark-${{ github.ref_name }}.cdx.json
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$SBOM" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$SBOM" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi

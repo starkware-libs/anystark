@@ -65,14 +65,11 @@ on every pull request, so exports-vs-`dist` drift surfaces before release day.
 4. Approve the publish run: it waits for a required reviewer of the `publish` environment
    (Review deployments on the run's page).
 
-Optionally create a GitHub Release from the tag afterwards for the changelog.
-
 ## What the workflow does
 
 `.github/workflows/publish.yml` triggers on a pushed `vX.Y.Z` tag. Its `sbom` job generates one
 CycloneDX SBOM of the four packages' runtime dependencies and uploads it as the run's
-`sbom-vX.Y.Z` artifact. GitHub deletes artifacts after at most 90 days; to rebuild one, check
-out the tag, run `npm ci --ignore-scripts`, then the job's `cyclonedx-npm` command.
+`sbom-vX.Y.Z` artifact, which GitHub deletes after at most 90 days.
 
 The `publish` job then:
 
@@ -86,6 +83,16 @@ The `publish` job then:
    `@starkware-libs/anystark-cctp`, then `@starkware-libs/anystark-react`, then
    `@starkware-libs/anystark-paymaster-proxy`, each from its own package directory, with the
    target registry taken from each manifest's `publishConfig`.
+
+After a successful publish, the `release` job keeps the SBOM permanently. It creates the tag's
+GitHub Release with the SBOM attached, with notes generated from the merged pull requests, and
+signs an SBOM attestation of the four tarballs npm serves for the version. To check a tarball:
+
+```bash
+npm pack @starkware-libs/anystark-core@X.Y.Z
+gh attestation verify starkware-libs-anystark-core-X.Y.Z.tgz --repo starkware-libs/anystark \
+  --predicate-type https://cyclonedx.org/bom
+```
 
 Set the release managers as the `publish` environment's required reviewers in the repository
 settings: GitHub creates a missing environment on the first run, with no reviewers.

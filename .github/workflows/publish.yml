@@ -107,8 +107,8 @@ jobs:
         with:
           name: sbom-${{ github.ref_name }}
       # Downloads the published tarballs, the attestation's subjects. It runs outside the
-      # checkout so the repository's .npmrc min-release-age does not reject the new version,
-      # and retries while the registry starts serving it.
+      # checkout so the repository's .npmrc min-release-age does not reject the new version.
+      # npm takes a few minutes to serve a new version, so it tries once a minute, up to 20 times.
       - run: |
           node --input-type=module -e '
             import { readFileSync } from "node:fs";
@@ -120,13 +120,16 @@ jobs:
           ' > "$RUNNER_TEMP/specs"
           mkdir "$RUNNER_TEMP/tarballs"
           cd "$RUNNER_TEMP/tarballs"
-          while read -r spec; do
-            for attempt in 1 2 3 4 5; do
-              if npm pack "$spec"; then break; fi
-              if [ "$attempt" = 5 ]; then exit 1; fi
-              sleep 15
-            done
-          done < "$RUNNER_TEMP/specs"
+          for _ in $(seq 20); do
+            sleep 60
+            : > "$RUNNER_TEMP/missing"
+            while read -r spec; do
+              npm pack --prefer-online "$spec" || echo "$spec" >> "$RUNNER_TEMP/missing"
+            done < "$RUNNER_TEMP/specs"
+            mv "$RUNNER_TEMP/missing" "$RUNNER_TEMP/specs"
+            if [ ! -s "$RUNNER_TEMP/specs" ]; then break; fi
+          done
+          test ! -s "$RUNNER_TEMP/specs"
       # The action recognizes CycloneDX only by a serialNumber, which the reproducible SBOM
       # omits, so the predicate type is given explicitly.
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
